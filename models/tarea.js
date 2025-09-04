@@ -1,78 +1,82 @@
-const mongoose = require('mongoose')
+const { Model, DataTypes } = require('sequelize')
+const { sequelize } = require('../util/db')
 
-const preguntaSchema = new mongoose.Schema({
-  pregunta: { 
-    type: String, 
-    required: [true, 'La pregunta es obligatoria']
+class Tarea extends Model {}
+
+Tarea.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
   },
-  opciones: [{
-    texto: { 
-      type: String, 
-      required: [true, 'El texto de la opción es obligatorio']
-    },
-    esCorrecta: { 
-      type: Boolean, 
-      required: [true, 'Debe indicar si la opción es correcta']
-    }
-  }],
-  respuestas:[ {
-    usuarioId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    seleccion:{
-    type: Number,
-    required: true
-  }
-}
-]
-})
-
-// Validación para asegurar que hay al menos una opción
-preguntaSchema.path('opciones').validate(function(opciones) {
-  return opciones.length > 0;
-}, 'Debe proporcionar al menos una opción');
-
-const tareaSchema = new mongoose.Schema({
-  titulo: { type: String, required: true },
-  descripcion: String,
+  titulo: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  descripcion: {
+    type: DataTypes.STRING
+  },
   fechaLimite: {
-    type: Date,
-    required: true,
+    type: DataTypes.DATE,
+    allowNull: false,
     validate: {
-      validator: function(v) {
-        return v > new Date();
-      },
-      message: 'La fecha límite debe ser posterior a la fecha actual'
+      isAfterNow(value) {
+        if (value <= new Date()) {
+          throw new Error('La fecha límite debe ser posterior a la fecha actual');
+        }
+      }
     }
   },
-  completada: { type: Boolean, default: false },
-  preguntas: [preguntaSchema],
-  creador: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+  completada: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   },
-  nombreCreador: String,
+  pregunta: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  opciones: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    validate: {
+      isValidOptions(value) {
+        if (!Array.isArray(value) || value.length === 0) {
+          throw new Error('Debe proporcionar al menos una opción');
+        }
+        value.forEach(opcion => {
+          if (!opcion.texto || typeof opcion.esCorrecta !== 'boolean') {
+            throw new Error('Cada opción debe tener texto y esCorrecta');
+          }
+        });
+      }
+    }
+  },
+  respuestas: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
+  creadorId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  nombreCreador: {
+    type: DataTypes.STRING
+  },
   userInfo: {
-    username: String,
-    name: String,
-    Rol: String
+    type: DataTypes.JSON
   },
-  usuariosCompletaron: [{
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'User'
-}]
-
-})
-
-tareaSchema.set('toJSON', {
-  transform: (doc, ret) => {
-    ret.id = ret._id.toString()
-    delete ret._id
-    delete ret.__v
+  usuariosCompletaron: {
+    type: DataTypes.JSON,
+    defaultValue: []
   }
+}, {
+  sequelize,
+  underscored: true,
+  timestamps: true,
+  modelName: 'tarea'
 })
 
-
-module.exports = mongoose.model('Tarea', tareaSchema)
+module.exports = Tarea

@@ -1,35 +1,47 @@
-const mongoose = require('mongoose')
+const { Model, DataTypes } = require('sequelize')
+const { sequelize } = require('../util/db')
 
-const contactSchema = new mongoose.Schema({
+class Contact extends Model {}
+
+Contact.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   name: {
-    type: String,
-    required: true,
-    minlength: 3,
-    unique: true
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+    validate: {
+      len: [3, Infinity]
+    }
   },
   number: {
-    type: String,
-    required: true,
-    minlength: 10,
-    unique: true
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+    validate: {
+      len: [10, Infinity]
+    }
   },
-  email:{
-    type: String,
-    required: true,
-    unique: true
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+    validate: {
+      isEmail: true
+    }
   },
   comments: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false
   }
+}, {
+  sequelize,
+  underscored: true,
+  timestamps: false,
+  modelName: 'contact'
 })
 
-contactSchema.set('toJSON', {
-  transform: (document, returnedObject) => {
-    returnedObject.id = returnedObject._id.toString()
-    delete returnedObject._id
-    delete returnedObject.__v
-  }
-})
-
-module.exports = mongoose.model('Contact', contactSchema)
+module.exports = Contact
